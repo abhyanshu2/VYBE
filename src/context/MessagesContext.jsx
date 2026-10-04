@@ -1,26 +1,51 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { db, firebaseReady } from '../firebase'
+import { useAuth } from './AuthContext'
 
 const Ctx = createContext(null)
 export const useMessages = () => useContext(Ctx)
 
-const now = Date.now()
-const SEED = {
-  aarav: [{ from: 'aarav', text: 'Hey! Loved your latest post.', ts: now - 3600e3 }],
-  sana: [{ from: 'sana', text: 'Thanks for the follow!', ts: now - 7200e3 }],
-}
-const DEMO_REPLIES = ['Sounds good!', 'Thanks for reaching out!', 'Nice, I was thinking the same.', "Let's catch up later."]
+// chats/{uidA_uidB (sorted)} -> { members:[a,b], lastText, lastSender, lastAt, seen:{uid: time} }
+// chats/{id}/messages/{auto} -> { senderId, text, createdAt }
+export const chatIdFor = (a, b) => [a, b].sort().join('_')
+const ms = (t) => t?.toMillis?.() || 0
 
-// Firestore (conversations/messages) will replace this later. Components stay the same.
 export function MessagesProvider({ children }) {
-  const [threads, setThreads] = useState(SEED)
+  const { user } = useAuth()
+  const [chats, setChats] = useState([])
 
-  const push = (user, msg) => setThreads((t) => ({ ...t, [user]: [...(t[user] || []), msg] }))
+  useEffect(() => {
+    if (!firebaseReady || !user) { setChats([]); return }
+    const q = query(collection(db, 'chats'), where('members', 'array-contains', user.uid))
+    return onSnapshot(q,
+      (s) => setChats(s.docs.map((d) => {
+        const c = d.data({ serverTimestamps: 'estimate' })
+        return {
+          id: d.id,
+          otherUid: c.members.find((m) => m !== user.uid),
+          lastText: c.lastText || '', lastSender: c.lastSender, lastAt: ms(c.lastAt),
+          unread: !!c.lastSender && c.lastSender !== user.uid && ms(c.seen?.[user.uid]) < ms(c.lastAt),
+        }
+      }).sort((a, b) => b.lastAt - a.lastAt)),
+      (e) => console.warn('Chats error:', e.code))
+  }, [user?.uid])
 
-  const send = (user, text) => {
-    push(user, { from: 'you', text, ts: Date.now() })
-    // DEMO: fake auto-reply. Remove once real Firestore messaging is in place.
-    setTimeout(() => push(user, { from: user, text: DEMO_REPLIES[Math.floor(Math.random() * DEMO_REPLIES.length)], ts: Date.now() }), 1200)
+  const send = (otherUid, text) => {
+    const id = chatIdFor(user.uid, otherUid)
+    const ref = doc(db, 'chats', id)
+    const b = writeBatch(db)
+    b.set(ref, {
+      members: [user.uid, otherUid].sort(),
+      lastText: text.slice(0, 100), lastSender: user.uid, lastAt: serverTimestamp(),
+      seen: { [user.uid]: serverTimestamp() },
+    }, { merge: true })
+    b.set(doc(collection(ref, 'messages')), { senderId: user.uid, text, createdAt: serverTimestamp() })
+    return b.commit()
   }
 
-  return <Ctx.Provider value={{ threads, send }}>{children}</Ctx.Provider>
+  const markSeen = (otherUid) =>
+    updateDoc(doc(db, 'chats', chatIdFor(user.uid, otherUid)), { [`seen.${user.uid}`]: serverTimestamp() }).catch(() => {})
+
+  return <Ctx.Provider value={{ chats, unread: chats.filter((c) => c.unread).length, send, markSeen }}>{children}</Ctx.Provider>
 }

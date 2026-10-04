@@ -74,12 +74,13 @@ export function AuthProvider({ children }) {
     async loginGoogle() { need(); await signInWithPopup(auth, googleProvider) },
     async logout() { if (firebaseReady) await signOut(auth) },
     // Profile edit: name, bio, avatar (photo undefined = avatar na badle)
-    async updateMyProfile({ name, bio, photo }) {
+    async updateMyProfile({ name, bio, photo, banner }) {
       need()
       const cur = auth.currentUser
       await updateProfile(cur, photo !== undefined ? { displayName: name, photoURL: photo } : { displayName: name })
       const patch = { name, bio }
       if (photo !== undefined) patch.photoURL = photo
+      if (banner !== undefined) patch.banner = banner
       await setDoc(doc(db, 'users', cur.uid), patch, { merge: true })
       apply(auth.currentUser)
       // Purani posts mein bhi naya naam/photo (comments mein purana rehta hai)

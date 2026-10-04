@@ -4,6 +4,7 @@ import Icon from './Icon'
 import Avatar from './Avatar'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationsContext'
+import { useMessages } from '../context/MessagesContext'
 
 // Controls the theme via <html class="dark"> and remembers the choice in localStorage
 function ThemeToggle({ className = '', withLabel = false }) {
@@ -33,6 +34,7 @@ const soft = 'rounded-xl text-slate-600 hover:bg-slate-200/60 dark:text-slate-40
 export default function Nav() {
   const { user, logout } = useAuth()
   const { unread } = useNotifications()
+  const { unread: unreadChats } = useMessages()
   const me = { uid: user.uid, name: user.name, photo: user.photo }
   return (
     <>
@@ -46,6 +48,9 @@ export default function Nav() {
               <Icon name={i.icon} /><span className="hidden lg:inline">{i.label}</span>
               {i.to === '/activity' && unread > 0 && (
                 <span className="absolute top-1 left-7 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white">{unread > 9 ? '9+' : unread}</span>
+              )}
+              {i.to === '/messages' && unreadChats > 0 && (
+                <span className="absolute top-1 left-7 grid size-4 place-items-center rounded-full bg-rose-500 text-[10px] font-bold text-white">{unreadChats > 9 ? '9+' : unreadChats}</span>
               )}
             </NavLink>
           ))}
@@ -68,7 +73,7 @@ export default function Nav() {
         <div className="flex h-14 items-center justify-between px-4">
           <Link to="/" className="text-2xl font-extrabold tracking-tight">vybe<span className="text-indigo-500"></span></Link>
           <div className="flex items-center gap-1">
-            <NavLink to="/messages" aria-label="Messages" className={({ isActive }) => `p-2.5 ${soft} ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}><Icon name="mail" /></NavLink>
+            <NavLink to="/messages" aria-label="Messages" className={({ isActive }) => `p-2.5 ${soft} ${isActive ? 'text-indigo-600 dark:text-indigo-400' : ''}`}><span className="relative"><Icon name="mail" />{unreadChats > 0 && <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-rose-500 ring-2 ring-slate-50 dark:ring-slate-950" />}</span></NavLink>
             <ThemeToggle className={`p-2.5 ${soft}`} />
           </div>
         </div>

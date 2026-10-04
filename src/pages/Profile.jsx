@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import { usePosts } from '../context/PostsContext'
@@ -51,6 +51,7 @@ export default function Profile() {
     username: data?.username || (isMe ? user.handle : ''),
     photo: data ? data.photoURL : isMe ? user.photo : '',
     bio: data?.bio || '',
+    banner: data?.banner || '',
   }
   const mine = posts.filter((x) => x.author.uid === uid)
   const saved = posts.filter((x) => x.saved)
@@ -59,19 +60,23 @@ export default function Profile() {
   return (
     <>
       <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative h-24 sm:h-28 md:h-36" style={{ background: grad(gi(uid)) }}>
+        <div className="relative aspect-[3/1] w-full" style={{ background: grad(gi(uid)) }}>
+          {p.banner && <img src={p.banner} alt="" className="absolute inset-0 size-full object-cover" />}
           {isMe && <button onClick={logout} className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white backdrop-blur hover:bg-black/60"><Icon name="logout" />Logout</button>}
         </div>
         <div className="px-4 pb-5 md:px-6">
           <div className="flex items-end justify-between gap-3">
-            <div className="-mt-10 inline-block shrink-0 rounded-full ring-4 ring-white sm:-mt-11 dark:ring-slate-900"><Avatar profile={p} size={84} /></div>
+            <div className="relative z-10 -mt-10 inline-block shrink-0 rounded-full ring-4 ring-white sm:-mt-11 dark:ring-slate-900"><Avatar profile={p} size={84} /></div>
             {isMe ? (
               <button onClick={() => setEditing(true)} className="mt-3 rounded-full border border-slate-300 px-5 py-2 text-sm font-bold transition-colors hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">Edit profile</button>
             ) : (
-              <button onClick={() => toggleFollow(uid)}
-                className={`mt-3 rounded-full px-5 py-2 text-sm font-bold transition-colors ${isFollowing(uid) ? 'border border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                {isFollowing(uid) ? 'Following' : 'Follow'}
-              </button>
+              <div className="mt-3 flex gap-2">
+                <Link to={`/messages/${uid}`} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-bold transition-colors hover:bg-slate-50 sm:px-5 dark:border-slate-600 dark:hover:bg-slate-800">Message</Link>
+                <button onClick={() => toggleFollow(uid)}
+                  className={`rounded-full px-4 py-2 text-sm font-bold transition-colors sm:px-5 ${isFollowing(uid) ? 'border border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                  {isFollowing(uid) ? 'Following' : 'Follow'}
+                </button>
+              </div>
             )}
           </div>
           <h1 className="mt-2 text-xl font-extrabold tracking-tight break-words sm:text-2xl">{p.name}</h1>
