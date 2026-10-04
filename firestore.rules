@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Profiles: sab logged-in users padh sakte hain, likh sirf apna sakte hain
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Posts
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      // Post sirf apne naam se ban sakta hai
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // Owner kuch bhi edit kar sakta hai; baaki log sirf likedBy / comments badal sakte hain
+      allow update: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'comments'])
+      );
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Follow relations: doc id = followerUid_followingUid
+    match /follows/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.followerId == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.followingId;
+      allow delete: if request.auth != null && resource.data.followerId == request.auth.uid;
+    }
+
+    // Notifications: sirf jise aaya (toUid) wahi padh/read-mark kar sakta hai
+    match /notifications/{id} {
+      allow read: if request.auth != null && resource.data.toUid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.toUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null
+        && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+    }
+  }
+}

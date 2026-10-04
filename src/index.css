@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: clip; -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+/* iPhone input pe zoom na kare (16px se chhota text zoom trigger karta hai) */
+@media (max-width: 767px) { input, textarea, select { font-size: 16px; } }
+img { max-width: 100%; }
+body { @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100; }
+:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
